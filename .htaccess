@@ -1,0 +1,9 @@
+order allow,deny
+allow from all
+<files addChangeBookPage.php>
+	#deny from all
+	AuthType Basic
+	AuthName «Prompt»
+	AuthUserFile C:\xampp\htdocs\BookStore\.htpasswd
+	Require valid-user
+</files>
