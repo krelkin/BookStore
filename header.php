@@ -20,7 +20,7 @@ http://www.templatemo.com/preview/templatemo_409_travel
         <link rel="stylesheet" href="css/animate.css">
         <link rel="stylesheet" href="css/templatemo_misc.css">
         <link rel="stylesheet" href="css/templatemo_style.css">
-		
+	
 		<link rel="stylesheet" href="css/my_css.css">
 
         <script src="https://code.jquery.com/jquery-2.2.4.js"></script>

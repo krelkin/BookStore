@@ -1,20 +1,13 @@
 ﻿<?php include "header.php"; 
-	/*<!-- <script src="js/order_book.js" charset="utf-8"></script> -->
-	<!-- <script src="js/my_script.js"></script> -->*/
+	
+	include "php/functions.php";
 	
 	echo '<div class="page-top" id="templatemo_about">
 	</div> <!-- /.page-header -->';
 	
-	include "php/connectToDataBase.php";
-	
-	$book_id = $_GET["book_id"];
-	
-	$get_array = true;
-	include "php/getGenreList.php";
-	include "php/getAuthorList.php";
-	
-	$query = "SELECT book_id, title, price, description FROM books WHERE book_id = " . $book_id;
-	$row = $sqlBase->query( $query )->fetch_assoc();
+	$book = $DB->select(2, ["book_id" => 2])[0];
+	$genres_arr = getList($DB, ["field" => "genre",  "book_id" => $_GET["book_id"], "get_array" => true]);
+	$authors_arr= getList($DB, ["field" => "author", "book_id" => $_GET["book_id"], "get_array" => true]);
 		
 	echo
 	'
@@ -24,7 +17,7 @@
 			<div class="list-item">
 				<div class="list-thumb">
 					<div class="title">
-						<h4>' . $row['title'] . '</h4>
+						<h4>' . $book['title'] . '</h4>
 					</div>
 				</div>
 				<div class="list-content">
@@ -38,8 +31,6 @@
 						}
 						echo '</h5><div>&nbsp;</div><span>';
 					
-						//'<h5>' . $authors . '</h5>
-						
 						foreach($genres_arr as $key => $value){
 							echo '<a href = "searchpage.php?genre_id=' . $value["genre_id"] . '" class = "btn btn-warning" style = "display:inline">' . $value["genre_name"] . '</a>';
 						}
@@ -47,9 +38,9 @@
 						
 						<div>&nbsp;</div>
 						
-						<div>' . $row['description'] . '</div>
+						<div>' . $book['description'] . '</div>
 						<div class = "block"> </div>
-						<div class = "btn btn-info">' . $row['price'] . ' грн.</div>
+						<div class = "btn btn-info">' . $book['price'] . ' грн.</div>
 					</div>
 					<div>&nbsp;</div>
 					<div class = "input-group">
@@ -65,6 +56,5 @@
 	</div> ';
 	
 include "footer.php" 
-
 
 ?>

@@ -1,12 +1,17 @@
-<?php include "header.php"?>
+<?php 
+include "header.php";
+include "php/functions.php";
+$par = ["function_name" => "getBooksList", "id" => 1];
+?>
 		<script src = "js/js_for_index.js" type = "text/javascript"></script>
 		<img src="images/head_books.jpg" alt="Special 1" draggable="false" class="page-top">
         <div class="flexslider">
             <!--<img src="images/head_books.jpg" alt="Special 1" draggable="false">-->
             <ul class="slides" id = "slider">
                 <?php
-                    /*$id = 0;
-                    include "php/getBooksList.php";*/
+                    //$id = 0;
+                    //include "php/getBooksList.php";
+					
                 ?>
             </ul>
             <!-- <ul class="flex-direction-nav"><li><a class="flex-prev" href="#">←</a></li><li><a class="flex-next" href="#">→</a></li></ul> -->
@@ -16,8 +21,11 @@
             <div class="row">
                 <div class="our-listing owl-carousel">
                     <?php
-                        $id = 1;
-                        include "php/getBooksList.php";
+						return_result(
+									$DB, 
+									$par, 
+									getBooksList($DB, $par)
+								);
                     ?>
                 </div>
             </div>
@@ -44,8 +52,13 @@
 			
             <div id="books_content">
                 <?php
-                    $id = 2;
-                    include "php/getBooksList.php";
+					$par["id"] = 2;
+					if(isset($_GET["page"]))$par["page"] = $_GET["page"];
+					return_result(
+								$DB, 
+								$par, 
+								getBooksList($DB, $par)
+							);
                 ?>
 			</div>
 			

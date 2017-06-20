@@ -1,3 +1,4 @@
+;
 var arrBooksContent  = {}; //массив книг, которые отображаются на странице после выбора
 var arrGenreContent  = {}; //массив жанров, которые соответствуют отображаемым книгам на странице
 var arrAuthorContent = {}; //массив авторов, которые соответствуют отображаемым книгам на странице
@@ -158,25 +159,23 @@ function fillContentArrayFromJSON(msg, array, flatArray, tableName){ //расп�
 function addAttrToBooks(arr, attr){ //Добавление жанров или авторов к книгам
 	$.each(arr, function(index, value){
 		$("#" + attr + "_id" + value['book_id'])
-			.append( $("<a>",{ class: "btn btn-" + (attr == "genre"?"warning":"success"),  //2-й класс
-				  href: "searchpage.php?" + attr + "_id=" + value[attr + '_id'],//2
-				  text: value[attr + '_name']//3
+			.append( $("<a>",{ class: "btn btn-" + (attr == "genre"?"warning":"success"),  
+				  href: "searchpage.php?" + attr + "_id=" + value[attr + '_id'],
+				  text: value[attr + '_name']
 				}) );
 	});
 }
 
 function getList(book_id, 	//массив с id книг для отображения
 				arr, 		//массив жанров или авторов
-				url, 		//адрес php файла
+				json,		//json объект с настройками
 				attr		//"genre" или "author"
 				){ //AJAX запрос по жанрам или авторам к книгам
 	var getSearchContent = function(msg){
         fillContentArrayFromJSON(msg, arr);
 		addAttrToBooks(arr, attr);
 	}
-	
-	var json = 'dataSearch=' + JSON.stringify({get_json:true, book_id: book_id});
-	getFromAjax("POST", url, json, getSearchContent);
+	getFromAjax("POST", "php/functions.php", json, getSearchContent);
 }
 
 function fillSearchContent(msg, jQObject) { //Добавление основного контента в массив
@@ -228,9 +227,11 @@ function createContent(jQObject){ //Создание основного конт
 		arr.push(value['book_id']);
 		i++;
     });
-
-	getList(arr, arrGenreContent,  "php/getGenreList.php",  "genre");
-	getList(arr, arrAuthorContent, "php/getAuthorList.php", "author");
+	
+	var json = 'json_data=' + JSON.stringify({"function_name":"getList","field":"author","get_json":true,"book_id":arr});
+	getList(arr, arrAuthorContent, json, "author");
+	json = 'json_data=' + JSON.stringify({"function_name":"getList","field":"genre","get_json":true,"book_id":arr});
+	getList(arr, arrGenreContent,  json, "genre");
 }
 
 function createAllGenresList(jQObject){ //Заполнение всех жанров для фильтров
@@ -256,7 +257,8 @@ function getListOfAllGenres(){ // AJAX запрос по всем жанрам
 		fillContentArrayFromJSON(msg, allGenres);
 		createAllGenresList( $("#genres_list_search") );
 	}
-	getFromAjax("POST", "php/getBigGenreList.php", 'genres=' + JSON.stringify(choosenGenres),  fillAllGenres);
+	var json = 'json_data=' + JSON.stringify({"function_name": "getBigGenreList", "field": "genre", "get_json":true, "genres": choosenGenres});
+	getFromAjax("POST", "php/functions.php", json,  fillAllGenres);
 }
 
 function createAllAuthorsList(jQObject){ //Заполнение всех авторов для фильтров
@@ -286,12 +288,13 @@ function getListOfAllAuthors(){ // AJAX запрос по всем автора�
 		fillContentArrayFromJSON(msg, allAuthors, true, "author");
 		createAllAuthorsList( $("#authors_list_search") );
 	}
-	getFromAjax("POST", "php/getAuthorList.php", "get_json=true", fillAllAuthors);
+	var json = 'json_data=' + JSON.stringify({"function_name":"getList", "field":"author", "get_json":true});
+	getFromAjax("POST", "php/functions.php", json, fillAllAuthors);
 }
 //===============================КОНЕЦ ДОБАВЛЕНИЕ КОНТЕНТА====================================
 
 //==========================НАЧАЛО ФУНКЦИИ ПО РАБОТЕ С ОТБОРАМИ===============================
-function selectOption(elem){ //При выборе порядка сортировки и количества отображаемыъ элементов на странице
+function selectOption(elem){ //При выборе порядка сортировки и количества отображаемых элементов на странице
 	if(elem.id == "quantityElem") filterChange = true;
 	setCookie(elem.id, $("#" + elem.id).val(), 14);
 }
@@ -368,7 +371,7 @@ function chooseGenre(elem){ //Отбор по жанрам
     }
 }
 
-function createJumpButton(quantity, jQObject){ //Создание панели с кнопками
+function createJumpButton(quantity, jQObject){ //Создание панели с кнопками страниц
 	jQObject.html("");
 	elemNumber = $("#quantityElem").val();
 
@@ -385,7 +388,7 @@ function createJumpButton(quantity, jQObject){ //Создание панели �
 }
 
 function search(pNumber){ //Поиск в базе данных по отборам
-	
+
 	var ajaxParam  = {};
 	var pageNumber = "";
 	if(pNumber == undefined)pageNumber = 1;
@@ -399,40 +402,44 @@ function search(pNumber){ //Поиск в базе данных по отбор�
 	arrAuthorContent = {};
 	$("#search_content").html("");
 	
-	ajaxParam.title 		= $("#title").val();
-	ajaxParam.pageNumber 	= pageNumber;
+	ajaxParam.function_name	= "search";
+	ajaxParam.page		 	= pageNumber;
 	ajaxParam.orderBy 		= $("#orderBy").val();
-	ajaxParam.elemNumber 	= $("#quantityElem").val();
-	ajaxParam.author_id 	= new Array();
-	ajaxParam.genre_id		= new Array();
+	ajaxParam.searchParams	= {};
+	ajaxParam.searchParams.title 		= $("#title").val();
+	ajaxParam.searchParams.author_id 	= new Array();
+	ajaxParam.searchParams.genre_id		= new Array();
 	
 	$.each(choosenAuthors, function(index, value){
-		ajaxParam.author_id.push(value);
+		ajaxParam.searchParams.author_id.push(value);
 	});
 	
 	$.each(choosenGenres, function(index, value){
-		ajaxParam.genre_id.push(value);
+		ajaxParam.searchParams.genre_id.push(value);
 	});
 	
 	var getSearchContent = function(msg){
         fillSearchContent( msg, $("#search_content") );
-		//$("#search_content").html(msg);
 	}
 	
 	//Получить непосредственно сами книги
-    getFromAjax("POST", "php/search.php", 'dataRequest=' + JSON.stringify(ajaxParam), getSearchContent);
+	var json = 'json_data=' + JSON.stringify(ajaxParam);
+    getFromAjax("POST", "php/functions.php", json, getSearchContent);
 	
 	//Сформировать кнопки страниц
 	var generateJumpButtons = function(msg){
-		createJumpButton( msg, $("#jumpButtons") );
+		createJumpButton( JSON.parse(msg)["quantityBook"], $("#jumpButtons") );
 	}
 	
 	//Получить количество страниц, если у нас поменялись фильтры
 	if(filterChange){
-		getFromAjax("POST", "php/countPage.php", 'dataRequest=' + JSON.stringify(ajaxParam), generateJumpButtons);
+		ajaxParam.function_name	= "countPage";
+		json = 'json_data=' + JSON.stringify(ajaxParam);
+		getFromAjax("POST", "php/functions.php", json, generateJumpButtons);
 		filterChange = false;
 	}
 	
 	getListOfAllGenres();
 }
+
 //==========================КОНЕЦ  ФУНКЦИИ ПО РАБОТЕ С ОТБОРАМИ===============================

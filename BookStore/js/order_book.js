@@ -28,9 +28,6 @@ function fillContentArrayFromJSON(msg, array, flatArray, tableName){ //расп�
 //===============================КОНЕЦ  РАБОТА С AJAX=========================================
 
 function SendMail(){ // отправка e-mail администратору
-	var sRecipientMail = "krelk@i.ua"; 	//ящик админа
-	var sSubject = "Сайт BookStore";	//заголовок
-	var sMsgBody = 'Вы заказали книгу "' + $(".title h4").html() + '" в количестве ' + $("quantity_book").val() + ' штук.'; //тело письма
 	
 	var func = function(msg){
 		$("#result").removeClass("alert-success");
@@ -44,5 +41,10 @@ function SendMail(){ // отправка e-mail администратору
 		}
 	}
 	
-	getFromAjax("POST", "php/sendMail.php", "to=" + sRecipientMail + "&subject=" + sSubject + "&message=" + sMsgBody, func);
+	var json = 'json_data=' + JSON.stringify({
+							"function_name":"sendMail", 
+							"title": $(".title h4").html(), 
+							"quantity_book":$("#quantity_book").val()
+											});
+	getFromAjax("POST", "php/functions.php", json, func);
 }

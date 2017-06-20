@@ -97,7 +97,6 @@ $(document).ready(function(){ //При загрузке страницы (пок
 			titleClick = true;
 		}
 	});
-	
 });
 
 function refreshMenu(th, id, chShape){
@@ -198,10 +197,11 @@ function fillContentArrayFromJSON(msg, array, flatArray, tableName){ //расп�
 
 //==============================НАЧАЛО ДОБАВЛЕНИЕ КОНТЕНТА===================================
 function createAllGenresList(jQObject){ //Заполнение всех жанров для фильтров
+	jQObject.html("");
 	$.each(allGenres, function(index, value){
 		var c = "btn btn-danger block";
 		$.each(choosenGenres, function(index, valueChooseGenre){
-			if (valueChooseGenre == value["genre_id"]) c = "btn btn-success col-md-2 block";
+			if (valueChooseGenre == value["genre_id"]) c = "btn btn-success block";
 		}); 
 		jQObject.
 			append( $("<a>", {
@@ -215,14 +215,16 @@ function createAllGenresList(jQObject){ //Заполнение всех жанр
 
 function getListOfAllGenres(){ //AJAX запрос по всем жанрам
 	var fillAllGenres = function(msg){
-		$("#genres_list_search").html("");
+		allGenres = {};
 		fillContentArrayFromJSON(msg, allGenres);
 		createAllGenresList( $("#genres_list_search") );
 	}
-	getFromAjax("POST", "php/getBigGenreList.php", 'genres=' + JSON.stringify(choosenGenres),  fillAllGenres);
+	var json = 'json_data=' + JSON.stringify({"function_name":"getList","field":"genre","get_json":true});
+	getFromAjax("POST", "php/functions.php", json, fillAllGenres);
 }
 
 function createAllAuthorsList(jQObject){ //Заполнение всех авторов для фильтров
+	jQObject.html("");
 	$.each(allAuthors, function(index, value){
 		var li = $("<li>", {
 				id: "author" + index,
@@ -244,11 +246,12 @@ function createAllAuthorsList(jQObject){ //Заполнение всех авт�
 
 function getListOfAllAuthors(){ //AJAX запрос по всем авторам
 	var fillAllAuthors = function(msg){
-		$("#authors_list_search").html("");
+		allAuthors = {};
 		fillContentArrayFromJSON(msg, allAuthors, true, "author");
 		createAllAuthorsList( $("#authors_list_search") );
 	}
-	getFromAjax("POST", "php/getAuthorList.php", "get_json=true", fillAllAuthors);
+	var json = 'json_data=' + JSON.stringify({"function_name":"getList","field":"author","get_json":true});
+	getFromAjax("POST", "php/functions.php", json, fillAllAuthors);
 }
 
 function createDataList(jQObject){ //Заполнение select книгами
@@ -268,10 +271,13 @@ function createDataList(jQObject){ //Заполнение select книгами
 
 function getAllBooks(){ //AJAX запрос по всем книгам
 	var fillDataList = function(msg){
+		books = {};
 		fillContentArrayFromJSON(msg, books);
 		createDataList( $("#books") );
 	}
-	getFromAjax("POST", "php/getBooksList.php", "id=4", fillDataList);
+	
+	var json = "json_data=" + JSON.stringify({"function_name":"getBooksList", "id":"4"});
+	getFromAjax("POST", "php/functions.php", json, fillDataList);
 }
 //==============================КОНЕЦ  ДОБАВЛЕНИЕ КОНТЕНТА====================================
 
@@ -378,7 +384,7 @@ function selectBook(elem){ //выбор книги
 
 function fillBookAttr(){ //заполнения авторов/жанров значениями выбранной книги
 	var func = function(msg){
-		var data = JSON.parse(msg)[0];
+		var data = JSON.parse(msg);
 		$("#description").html( data["description"] );
 		$("#price").val( data["price"] );
 		choosenGenres = [];
@@ -393,9 +399,13 @@ function fillBookAttr(){ //заполнения авторов/жанров зн
 			choosenAuthors.push(value["author_id"]);
 		});
 		showArrayAutors( $("#authors_panel_list") );
-
 	};
-	getFromAjax("POST", "php/getBooksList.php", "id=5&book_id_select=" + chooseBook, func);
+	var json = "json_data=" + JSON.stringify({
+					"function_name":"getBooksList",
+					"id":"5",
+					"book_id_select":chooseBook
+					});
+	getFromAjax("POST", "php/functions.php", json, func);
 }
 //==========================КОНЕЦ  ФУНКЦИИ ПО РАБОТЕ С ОТБОРАМИ===============================
 
@@ -405,26 +415,21 @@ function buttonClick(){ //нажатие на кнопку добавления/
 		addBook();
 	else if( $("#change").hasClass("active") )
 		changeBook();
-	else if( $("#changeGenre").hasClass("active") )
-		$('#genresGroup span input:checked').each(function(index, value){
-			changeGenreAuthor(1, 
-						this.id.slice(8), 
-						getName(allGenres, "genre", this.id.slice(8)), 
-						"genre",
-						index > 0);
+	else if( $("#changeGenre").hasClass("active") ){
+		var ids = new Array();
+		$('#genresGroup span input:checked').each(function(ind, el){
+			ids.push(this.id.slice(8))
 		});
-	else if( $("#changeAuthor").hasClass("active") )
-		$('#authorsGroup span input:checked').each(function(index, value){
-			changeGenreAuthor(1, 
-						this.id.slice(9), 
-						getName(allAuthors, "author", this.id.slice(9)), 
-						"author", 
-						index > 0);
+		changeGenreAuthor(1, ids, "", "genre");
+	}else if( $("#changeAuthor").hasClass("active") ){
+		var ids = new Array();
+		$('#authorsGroup span input:checked').each(function(ind, el){
+			ids.push(this.id.slice(9))
 		});
-	else if( $("#delete").hasClass("active") )
+		changeGenreAuthor(1, ids, "", "author");
+	}else if( $("#delete").hasClass("active") )
 		if( confirm("Удалить выбранные книги? (" + $('#deleteBook span input:checked').length + ")") )
 			deleteBook();
-
 }
 
 function checkBooksParams(){ //Проверка заполненности параметров
@@ -457,11 +462,9 @@ function checkBooksParams(){ //Проверка заполненности па�
 function editName(elem){ //изменить имя жанра/автора
 						//либо пометить на удаление книгу
 	if (elem.id.indexOf("genre") + 1 > 0){
-		//var _id = elem.id.slice(14);
 		$(elem).css("z-index", 0);
 		$("#genre_name" + elem.id.slice(14) ).focus();
 	}else if(elem.id.indexOf("author") + 1 > 0){
-		//var _id = ;
 		$(elem).css("z-index", 0);
 		$("#author_name" + elem.id.slice(15) ).focus();
 	}else{
@@ -470,6 +473,12 @@ function editName(elem){ //изменить имя жанра/автора
 				this.checked = !this.checked;
 		})
 	}
+}
+
+function getObjectLength(Obj){ //получить количество элементов в объекте
+	var length = 0;
+	$.each(Obj, function(){length++;});
+	return length;
 }
 
 function getBookAuthors(book_id){ //получить строку авторов книги
@@ -566,176 +575,515 @@ function focusOut(elem, str_id){ //при уходе фокуса с элеме�
 		$("#author_name_btn" + id).css("z-index", 99);
 }
 
-function findAndDisplayBook(book_id){
-	var _id;
-	$.each(books, function(ind, val){
-		if(book_id == val["book_id"]){
-			_id = ind;
-			$("#result").html( 
-				$("#result").html() + 
-				"<br/>    <b>" + val["title"] + "</b>"
-			); 
+function showUserMessage(data){ //отобразить сообщение пользователю
+	var message = "";
+	var arr = new Array();
+	
+	$("#result").removeClass("alert-success");
+	$("#result").removeClass("alert-warning");
+	$("#result").removeClass("alert-danger");
+	
+	if("result" in data){
+		if(data["result"]){
+			$("#result").addClass("alert-success");
+		}else{
+			$("#result").addClass("alert-danger");
+			if("deleted" in data){
+				var deleted = data["deleted"]["book_id"].length > 0 
+					|| data["deleted"]["author_id"].length > 0
+					|| data["deleted"]["genre_id"].length > 0;
+				var not_deleted = getObjectLength(data["not_deleted"]["book_id_author"]) > 0 
+					|| getObjectLength(data["not_deleted"]["book_id_genre"]) > 0;
+				if(deleted && not_deleted){
+					$("#result").removeClass("alert-warning");
+					$("#result").addClass("alert-warning");
+				}
+			}
 		}
-	});
-	return _id;
+	}else{
+		$("#result").addClass("alert-success");
+	}
+	
+	//добавленные данные
+	if("inserted" in data){
+		inserted_data = data["inserted"];
+		if(inserted_data["book_id"] > 0){ //была добавлена книга
+			message += "Была добавлена книга:<br>";
+			message += "Наименование: <strong>" + inserted_data["data_book"]["title"] + "</strong><br>";
+			message += "Описание: <strong>" + inserted_data["data_book"]["description"] + "</strong><br>";
+			message += "Цена: <strong>" + inserted_data["data_book"]["price"] + " грн.</strong><br>";
+			
+			message += "<strong>Авторы</strong>:<br>";
+			message += "<ul>";
+			arr = [];
+			$.each(inserted_data["author_id"], function(index, value){
+				arr.push(getName(allAuthors, "author", value));
+			});
+			message += "<li>" + arr.join("</li><li>") + "</li>";
+			message += "</ul>";
+			
+			arr = [];
+			message += "<strong>Жанры</strong>:<br>";
+			message += "<ul>";
+			$.each(inserted_data["genre_id"], function(index, value){
+				arr.push(getName(allGenres, "genre", value));
+			});
+			message += "<li>" + arr.join("</li><li>") + "</li>";
+			message += "</ul>";
+		}else{//если добавлялась не книга, а автор/жанр
+			var author_length = 0;
+			var genre_length = 0;
+			$.each(inserted_data["author_id"], function(){author_length++});
+			$.each(inserted_data["genre_id"],  function(){genre_length++});
+			if(author_length > 0){//добавлялся автор
+				message += "Добавлен автор:<br>";
+				$.each(inserted_data["author_id"], function(index, value){
+					message += "<strong>" + value + "</strong>";
+				});
+				message += "<br>";
+			}
+			if(genre_length > 0){//добавлялся жанр
+				message += "Добавлен жанр:<br>";
+				$.each(inserted_data["genre_id"], function(index, value){
+					message += "<strong>" + value + "</strong>";
+				});
+				message += "<br>";
+			}
+		}
+	}
+	if("deleted" in data){
+		var deleted_data = data["deleted"];
+		if(deleted_data["book_id"].length > 0){ // если удалили книгу(и) или из книги
+			if(deleted_data["author_id"].length == 0 && deleted_data["genre_id"].length == 0){ //удалили непосредственно книгу
+				message += "Удалили книгу:<br>";
+				message += "<ul>";
+				arr = [];
+				$.each(deleted_data["book_id"], function(index, value){
+					arr.push("<strong>" + getName(books, "book", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul>";
+			}else{
+				if(deleted_data["author_id"].length > 0){// если удалили авторов из книги
+					arr = [];
+					message += "Удалили автора:<br>";
+					$.each(deleted_data["author_id"], function(index, value){
+						arr.push("<strong>" + getName(allAuthors, "author", value) + "</strong>");
+					});
+					message += "<li>" + arr.join("</li><li>") + "</li>";
+					message += "</ul>";
+				}
+				if(deleted_data["genre_id"].length > 0){// если удалили жанры из книги
+					arr = [];
+					message += "Удалили жанр:<br>";
+					message += "<ul>";
+					$.each(deleted_data["genre_id"], function(index, value){
+						arr.push("<strong>" + getName(allGenres, "genre", value) + "</strong>");
+					});
+					message += "<li>" + arr.join("</li><li>") + "</li>";
+					message += "</ul>";
+				}
+			}
+		}else{ // если удалили автора(ов)/жанр(ы)
+			if(deleted_data["author_id"].length > 0){// если удалили авторов
+				arr = [];
+				message += "Удалили автора:<br>";
+				message += "<ul>";
+				$.each(deleted_data["author_id"], function(index, value){
+					arr.push("<strong>" + getName(allAuthors, "author", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul>";
+			}
+			if(deleted_data["genre_id"].length > 0){// если удалили жанры
+				arr = [];
+				message += "Удалили жанр:<br>";
+				message += "<ul>";
+				$.each(deleted_data["genre_id"], function(index, value){
+					arr.push("<strong>" + getName(allGenres, "genre", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul>";
+			}
+		}
+	}
+	if("not_deleted" in data){
+		var not_deleted_data = data["not_deleted"];
+		var author_length = 0;
+		var genre_length = 0;
+		$.each(not_deleted_data["book_id_author"], function(){author_length++});
+		$.each(not_deleted_data["book_id_genre"],  function(){genre_length++});
+
+		if(author_length > 0){// если не смогли удалить авторов
+			message += "<strong>Не удалось удалить авторов</strong>:<br>";
+			message += "<ul>";
+			var msg = "";
+			$.each(not_deleted_data["book_id_author"], function(index, value){
+				msg = '<ul>Автор <strong><i>"' + getName(allAuthors, "author", index) + '"</i></strong> прикреплён к книгам:';
+				$.each(not_deleted_data["book_id_author"][index], function(ind, val){
+					msg += "<li><a href='book.php?book_id=" + val["book_id"] + "'>";
+					msg += "<strong>" + getName(books, "book", val["book_id"]) + "</strong>";
+					msg += "</a></li>";
+				});
+				msg += "</ul>";
+				arr.push(msg);
+			});
+			message += "<li>" + arr.join("</li><li>") + "</li>";
+			message += "</ul>";
+		}
+		if(genre_length > 0){// если удалили жанры
+			arr = [];
+			message += "<strong>Не удалось удалить жанры</strong>:<br>";
+			message += "<ul>";
+			var msg = "";
+			$.each(not_deleted_data["book_id_genre"], function(index, value){
+				msg = '<ul>Жанр <strong><i>"' + getName(allGenres, "genre", index) + '"</i></strong> прикреплён к книгам:';
+				$.each(not_deleted_data["book_id_genre"][index], function(ind, val){
+					msg += "<li><a href='book.php?book_id=" + val["book_id"] + "'>";
+					msg += "<strong>" + getName(books, "book", val["book_id"]) + "</strong>";
+					msg += "</a></li>";
+				});
+				msg += "</ul>";
+				arr.push(msg);
+			});
+			message += "<li>" + arr.join("</li><li>") + "</li>";
+			message += "</ul>";
+		}
+	}
+	if("updated" in data){
+		var updated_data_books 	= data["updated"]["books"];
+		var updated_data_authors= data["updated"]["authors"];
+		var updated_data_genres	= data["updated"]["genres"];
+		
+		var books_length = 0;
+		var authors_length = 0;
+		var genres_length = 0;
+		$.each(updated_data_books, function(ind, val){
+			books_length++;});
+		$.each(updated_data_authors, function(ind, val){
+			authors_length++;});
+		$.each(updated_data_genres, function(ind, val){
+			genres_length++;});
+			
+		if(books_length > 0){ // если изменяли атрибуты книги
+			if(updated_data_books["title"]!==undefined){
+				message += 'Название изменено с <strong>"'
+				+ updated_data_books["old_title"]
+				+ '"</strong> на <strong>"'
+				+ updated_data_books["title"]
+				+ '"</strong><br>';
+			}
+			if(updated_data_books["description"]!==undefined){
+				message += 'Описание изменено с <strong>"'
+				+ updated_data_books["old_description"]
+				+ '"</strong> на <strong>"'
+				+ updated_data_books["description"]
+				+ '"</strong><br>';
+			}
+			if(updated_data_books["price"]!==undefined){
+				message += 'Цена изменена с <strong>"'
+				+ updated_data_books["old_price"]
+				+ '"</strong> на <strong>"'
+				+ updated_data_books["price"]
+				+ '"</strong><br>';
+			}
+		}
+		if(message.length > 0) message += "<br><br>";
+		if(updated_data_authors["added"] !== undefined){//если изменяли авторов книги
+			if(updated_data_authors["added"].length > 0){ //если добавились новые авторы
+				arr = [];
+				message += "Добавлены авторы:";
+				message += "<ul>";
+				$.each(updated_data_authors["added"], function(ind, value){
+						arr.push("<strong>" + getName(allAuthors, "author", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul><br>";
+			}
+			if(updated_data_authors["removed"].length > 0){ //если удалили старых авторов
+				arr = [];
+				message += "Удалены авторы:";
+				message += "<ul>";
+				$.each(updated_data_authors["removed"], function(ind, value){
+						arr.push("<strong>" + getName(allAuthors, "author", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul><br>";
+			}
+		}else{ // если изменяли авторов
+			if(authors_length > 0){
+				message += "Название автора изменено с ";
+				$.each(updated_data_authors, function(index, value){
+					var key = Object.keys(value)[0];
+					message += '"<strong>' + key + '</strong>" на "<strong>' + value[key] + '</strong>"';
+				});
+			}
+		}
+		if(updated_data_genres["added"] !== undefined){//если изменяли жанры книги
+			if(updated_data_genres["added"].length > 0){ //если добавились новые жанры
+				arr = [];
+				message += "Добавлены жанры:";
+				message += "<ul>";
+				$.each(updated_data_genres["added"], function(ind, value){
+						arr.push("<strong>" + getName(allGenres, "genre", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul><br>";
+			}
+			if(updated_data_genres["removed"].length > 0){ //если удалили старые жанры
+				arr = [];
+				message += "Удалены жанры:";
+				message += "<ul>";
+				$.each(updated_data_genres["removed"], function(ind, value){
+						arr.push("<strong>" + getName(allGenres, "genre", value) + "</strong>");
+				});
+				message += "<li>" + arr.join("</li><li>") + "</li>";
+				message += "</ul><br>";
+			}
+		}else{ // если изменяли жанры
+			if(genres_length > 0){
+				message += "Название жанра изменено с ";
+				$.each(updated_data_genres, function(index, value){
+					var key = Object.keys(value)[0];
+					message += '"<strong>' + key + '</strong>" на "<strong>' + value[key] + '</strong>"';
+				});
+			}
+		}
+	}
+	$("#result").html( message );
+	$("#result").show();
+	
 }
 
-function deleteBook(){
-	var _arrBookId = [];
-	$('#deleteBook span input:checked').each(function(index, value){
-		_arrBookId.push( this.id.slice(7) );
-	});
-
-	var func = function(msg){
-		data = JSON.parse(msg);
-		$("#result").show();
-		$("#result").html("");
-		$("#result").removeClass("alert-success");
-		$("#result").removeClass("alert-danger");
-		$("#result").removeClass("alert-warning");
-		if(data["deleting"].length > 0 && data["notDeleting"].length > 0)
-			$("#result").addClass("alert-warning");
-		else if(data["deleting"].length > 0)
-			$("#result").addClass("alert-success");
-		else if(data["notDeleting"].length > 0)
-			$("#result").addClass("alert-danger");
-		else
-			$("#result").hide();
+function changeArrays(data, book_id = 0){ //изменить массивы после изменения базы данных
+	if(!("deleted" in data || data["result"])) return;
+	var changed_books	= false;
+	var changed_genres	= false;
+	var changed_authors	= false;
+	
+	if("inserted" in data){
+		/*{
+		"result":true,
+		v1. "inserted":
+			{"book_id":0,
+			 "data_book":[],
+			 "author_id":{"inserted id":"inserted name"},
+			 "genre_id":{"inserted id":"inserted name"}
+			}
+		/*****************************************************************
+		v2. "inserted":
+			{"book_id":28,
+			 "data_book":{
+				"title":"test",
+				"description":"description",
+				"price":"1"
+			 },
+			 "author_id":["id"],
+			 "genre_id":["id"]
+			}
 			
-		var message = "";
+		}
+		*/
 		
-		if(data["deleting"].length > 0){
-			$("#result").html("Удаленные книги:");
-			$.each(data["deleting"], function(index, value){
-				delete books[ findAndDisplayBook(value) ];
+		var inserted_data = data["inserted"];
+		if(inserted_data["book_id"] > 0){ //добавили новую книгу
+			//необходимо изменять массив books и инициировать перезапись области Select со всеми книгами для выбора
+			var book = {};
+			book["book_id"]	= inserted_data["book_id"];
+			book["title"] 	= inserted_data["data_book"]["title"];
+			book["description"] = inserted_data["data_book"]["description"];
+			book["price"] 	= inserted_data["data_book"]["price"];
+			book["authors"]	= {};
+			var i = 0;
+			$.each(inserted_data["author_id"], function(index, value){
+				book["authors"][i++] = {"author_name": getName(allAuthors, "author", value)};
 			});
+			i = 0;
+			$.each(books, function(){i++;});
+			books[i] = book;
+			changed_books = true;
+		}else{//добавили новый жанр или нового автора
+			if(getObjectLength(inserted_data["author_id"]) > 0){
+				//изменяем массив allAuthors и запускаем перезапись списков, где есть авторы
+				$.each(inserted_data["author_id"], function(index, value){
+					allAuthors[index] = value;
+				});
+				changed_authors = true;
+			}
+			if(getObjectLength(inserted_data["genre_id"]) > 0){
+				//изменяем массив allGenres и запускаем перезапись списков, где есть авторы
+				$.each(inserted_data["genre_id"], function(index, value){
+					allGenres[getObjectLength(allGenres)] = {"genre_id": index, "genre_name":value};
+				});
+				changed_genres = true;
+			}
 		}
 		
-		fillGenresAuthorsBooks("#deleteBooks", "book", books);
-		createDataList( $("#books") );
+	}
+	if("updated" in data){
+		/*
+		"updated":{
+			"books":{
+				"title":"new_title",
+				"old_title":"old_title",
+				"description":"description",
+				"old_description":"old description",
+				"price":"8",
+				"old_price":"57"
+			},
+			"authors":{
+				"added":["13"],
+				"removed":["2","1"]
+			},
+			"genres":{
+				"added":["1"],
+				"removed":["9"]}
+		}
 		
-		if(data["notDeleting"].length > 0){
-			$("#result").html("Книги не удалены:");
-			$.each(data["notDeleting"], function(index, value){
-				findAndDisplayBook();
+		"updated":{
+			"books":[],
+			"authors":[],
+			"genres":{
+				"id":{"old_name":"new_name"}
+			}
+		}
+		*/
+		var updated_data = data["updated"];
+		if(book_id > 0){ //изменили существующую книгу (передали id выбранной книги)
+			//меняем массив books
+			object_book_index = 0;
+			$.each(books, function(index, value){
+				if(value["book_id"] == book_id)object_book_index = index; // получили индекс "ассоциативного" массива
 			});
+			
+			if(!Array.isArray(updated_data["books"])){ // поменяли атрибуты книги
+				$.each(updated_data["books"], function(index, value){
+					books[object_book_index][index] = value;
+				});
+			}
+			$.each(updated_data["authors"]["added"], function(index, value){
+				books[object_book_index]["authors"].push({"author_name": getName(allAuthors, "author", value) });
+			});
+			$.each(updated_data["authors"]["removed"], function(index, value){
+				books[object_book_index]["authors"] = books[object_book_index]["authors"].filter(function(el){
+					return el["author_name"] != getName(allAuthors, "author", value);
+				});
+			});
+			changed_books = true;
+		}else{//изменили автора либо жанр
+			if(getObjectLength(updated_data["authors"]) > 0){
+				//меняем массив allAuthors
+				$.each(updated_data["authors"], function(index, value){
+					allAuthors[index] = value[Object.keys(value)[0]];
+				});
+				changed_authors = true;
+			}
+			if(getObjectLength(updated_data["genres"]) > 0){
+				//меняем массив allGenres
+				$.each(updated_data["genres"], function(index, value){
+					var genre_index = 0;
+					$.each(allGenres, function(ind, val){
+						if(val["genre_id"] == index)genre_index = ind;
+					});
+					allGenres[genre_index]["genre_name"] = value[Object.keys(value)[0]];
+				});
+				changed_genres = true;
+			}
+
+		}
+	}
+	if("deleted" in data){
+		/*
+		"deleted":{
+			"book_id":["id"],
+			"author_id":["id"],
+			"genre_id":["id"]
+		}
+		*/
+		var deleted_data = data["deleted"];
+		if(deleted_data["book_id"].length > 0){
+			//изменяем массив books
+			$.each(deleted_data["book_id"], function(index, value){
+				$.each(books, function(ind, val){
+					if(val["book_id"] == value){
+						delete books[ind];
+					}
+				});
+			});
+			changed_books = true;
+		}
+		if(deleted_data["author_id"].length > 0){
+			$.each(deleted_data["author_id"], function(index, value){
+				delete allAuthors[value];
+			});
+			changed_authors = true;
+		}
+		if(deleted_data["genre_id"].length > 0){
+			$.each(deleted_data["genre_id"], function(index, value){
+				$.each(allGenres, function(ind, val){
+					if(val["genre_id"] == value){
+						delete allGenres[ind];
+					}
+				});
+			});
+			changed_genres = true;
 		}
 	}
 	
-	getFromAjax("POST", 
-		"php/deleteBook.php", 
-		'data=' + JSON.stringify( {"book_id": _arrBookId} ), 
-		func );
+	if(changed_books){
+		createDataList( $("#books") );
+		fillGenresAuthorsBooks("#deleteBooks", "book", books);
+	}
+	if(changed_authors){
+		createAllAuthorsList( $("#authors_list_search") );
+		fillGenresAuthorsBooks("#changeAuthorsGroup", "author", allAuthors);
+	}
+	if(changed_genres){
+		createAllGenresList( $("#genres_list_search") );
+		fillGenresAuthorsBooks("#changeGenresGroup", "genre", allGenres);
+	}
 }
 
 function changeGenreAuthor(id_operation, _id, _name, table, rep){ //изменить наименование жанра/автора в БД
 	/*	1 - удалить
 		2 - добавить
-		3 - изменить	*/
+		3 - изменить	
+	*/
 
 	var _id = _id || 0;
-	var _name = _name || "";
-	if(id_operation == 2)_name = $("#" + table + "_name").val();
+	var new_name = _name || "";
+	if(id_operation == 2)new_name = $("#" + table + "_name").val();
 	$("#" + table + "_name").val("");
 	var repeat = rep || false;
 	
 	var func = function(msg){
-		$("#result").show();
-		$("#result").removeClass("alert-success");
-		$("#result").removeClass("alert-danger");
-		
 		var data = JSON.parse(msg);
-		if (data["res"]) $("#result").addClass("alert-success");
-			else $("#result").addClass("alert-danger");
-		if (!repeat)
-			$("#result").html( data["message"] );
-		else{
-			$("#result").append("<br />");
-			$("#result").html( $("#result").html() + data["message"] );
-		}
-			
-		if(!data["res"]){
-			if(id_operation == 1){
-				//в arr_id - номера книг, которые необходимо отобразить
-				if (data["arr_id"].length > 0){
-					if (table == "genre")
-						var name = "Жанр <b>" + getName(allGenres, "genre", _id) + "</b> содержится в книгах";
-					else 
-						var name = "Автор <b>" + getName(allAuthors, "author", _id) + "</b> написал книги:";
-					var h2_text = $("<h2>").html(name);
-					$("#result")
-							.append( $("<br>") )
-							.append( h2_text )
-							.append( $("<br>") );
-					$.each(data["arr_id"], function(index, value){
-						$("#result")
-							.append( $("<a>", { href: "book.php?book_id=" + value,
-												text: getName(books, "", value)}) )
-							.append( $("<br>") );
-					});
-				}
-			}
-		}
-		else { 
-			if(id_operation == 1){
-				if (table == "genre")
-					$.each(allGenres, function(index, value){
-						if(value["genre_id"] == _id){
-							delete allGenres[index];
-							getListOfAllGenres();
-						}
-					});
-				else 
-					$.each(allAuthors, function(index, value){
-						if(index == _id){
-							delete allAuthors[index];
-							getListOfAllAuthors();
-						}
-					});	
-			}
-			if(id_operation == 2){
-				//в arr_id - номер последней добавленной записи
-				if (table == "genre"){
-					allGenres[ data["arr_id"] ] = {
-													"genre_id": data["arr_id"],
-													"genre_name": _name,
-													"book_quantity": 0
-												};
-					getListOfAllGenres();
-				}else{
-					allAuthors[ data["arr_id"] ] = author_name;
-					getListOfAllAuthors();
-				}
-			}else if(id_operation == 3){
-				if (table == "genre")
-					$.each(allGenres, function(index, value){
-						if (value["genre_id"] == _id){
-							value["genre_name"] = _name;
-							getListOfAllGenres();
-						}
-					});	
-				else 
-					$.each(allAuthors, function(index, value){
-						if (index == _id){
-							allAuthors[index] = _name;
-							getListOfAllAuthors();
-						}
-					});
-			}
-		};
-
-		fillGenresAuthorsBooks(
+		showUserMessage(data);
+		changeArrays(data);
+		
+		/*fillGenresAuthorsBooks(
 					(table == "genre"?"#changeGenresGroup":"#changeAuthorsGroup"),
 					table,
 					(table == "genre"?allGenres:allAuthors) );
-	};
+	*/};
+	
+	var json = {};
+
+	switch(id_operation){
+		case 1: json.function_name = "deleteBookAuthorGenre";
+				json[table+"s"] = _id;
+			break;
+		case 2: json.function_name = "addBookAuthorGenre";
+				json[table+"s"] = _id==0?new Array(new_name):_id;
+			break;
+		case 3: json.function_name = "updateBookAuthorGenre";
+				json[table+"s"] = {};
+				json[table+"s"][_id] = new_name;
+	}
 	
 	getFromAjax("POST",
-				"php/addChangeGenreAuthor.php",
-				'data=' + JSON.stringify( {"id_operation": id_operation,
-										   "_id": _id,
-										   "_name": _name,
-										   "_table": table} ),
+				"php/functions.php",
+				'json_data=' + JSON.stringify(json),
 				func );
 }
 
@@ -756,58 +1104,28 @@ function getName(arr, AutGen, val){ //получить имя автора / н�
 	return name;
 }
 
-function parseArrToShowUser(infoArr, arr, AutGen, addRemove){ //информационное сообщение пользователю
-	var infoForUser = "";
-	if(infoArr.length == 0) 
-		return "";
-	else{
-		infoForUser += "<b>";
-		infoForUser += AutGen == "author" ? "Авторы" : "Жанры";
-		infoForUser += addRemove ? " добавлены:" : " удалены:";
-		infoForUser += "</b><br />";
-		
-	}
-	$.each(infoArr, function(index, val){
-		infoForUser += getName(arr, AutGen, val) + ", ";
-	});
-	infoForUser += "<br />";
-	return infoForUser;
-}
-
 function changeBook(){ //изменение параметров книги
 	
 	if(!checkBooksParams())return;
 	
 	var bookUpdate = {};
-	bookUpdate.book_id 		= chooseBook;
-	bookUpdate.newBookInfo	= {
-		"title":		$("#title").val(),
-		"description":	$("#description").val(),
-		"price":		$("#price").val()
-	};
-	bookUpdate.newAuthors	= choosenAuthors;
-	bookUpdate.newGenres	= choosenGenres;
+	bookUpdate.function_name= "updateBookAuthorGenre";
+	bookUpdate.books = {};
+	bookUpdate.books.book_id = chooseBook;
+	bookUpdate.books.title   = $("#title").val();
+	bookUpdate.books.description = $("#description").val();
+	bookUpdate.books.price = $("#price").val();
+	bookUpdate.books.authors	= choosenAuthors;
+	bookUpdate.books.genres	= choosenGenres;
 	
 	var func = function(msg){
-		$("#result").show();
 		var data = JSON.parse(msg);
-		var infoForUser = "";
-		$.each(data, function(key, value){
-			$.each(value["newParamBook"], function (index, val){
-				if(index == "title") infoForUser += "<b>Название</b> изменено на <i><b>" + val + "</b></i><br />";
-				if(index == "description") infoForUser += "<b>Описание</b> изменено на <i><b>" + val + "</b></i> грн.<br />";
-				if(index == "price") infoForUser += "<b>Цена</b> изменена на <i><b>" + val + "</b></i><br />";
-			});
-			
-			infoForUser += parseArrToShowUser(value["addedAuthors"], 	allAuthors, "author", true);
-			infoForUser += parseArrToShowUser(value["removedAuthors"], 	allAuthors, "author", false);
-			infoForUser += parseArrToShowUser(value["addedGenres"], 	allGenres, 	"genre",  true);
-			infoForUser += parseArrToShowUser(value["removeGenres"], 	allGenres, 	"genre",  false);
-		});
-		$("#result").html( infoForUser );
+		showUserMessage(data);
+		changeArrays(data, chooseBook);
 	};
 	
-	getFromAjax("POST", "php/changeBook.php", 'dataUpdate=' + JSON.stringify(bookUpdate), func );
+	var json = 'json_data=' + JSON.stringify(bookUpdate);
+	getFromAjax("POST", "php/functions.php", json, func );
 }
 
 function addBook(){ //добавление книги в базу данных
@@ -815,6 +1133,7 @@ function addBook(){ //добавление книги в базу данных
 	if(!checkBooksParams())return;
 
 	ajaxData = {};
+	ajaxData.function_name = "addBookAuthorGenre";
 	ajaxData.title 		 = $("#title").val();
 	ajaxData.description = $("#description").val();
 	ajaxData.price 		 = $("#price").val();
@@ -834,12 +1153,28 @@ function addBook(){ //добавление книги в базу данных
 	});
 	
 	var func = function(msg){
-		$("#result").html(msg);
-		$("#result").show();
-		getAllBooks();
+		var data = JSON.parse(msg);
+		showUserMessage(data);
+		changeArrays(data);
 	};
+	var json = "json_data=" + JSON.stringify(ajaxData);
+	getFromAjax("POST", "php/functions.php", json, func );
+}
+
+function deleteBook(){ // удаление книги из базы данных
+	var _arrBookId = [];
+	$('#deleteBook span input:checked').each(function(index, value){
+		_arrBookId.push( this.id.slice(7) );
+	});
+
+	var func = function(msg){
+		data = JSON.parse(msg);
+		showUserMessage(data);
+		changeArrays(data);
+	}
 	
-	getFromAjax("POST", "php/addBook.php", 'dataRequest=' + JSON.stringify(ajaxData), func );
+	var json = 'json_data=' + JSON.stringify({"function_name":"deleteBookAuthorGenre", "book_id": _arrBookId});
+	getFromAjax("POST", "php/functions.php", json, func);
 }
 
 //========================КОНЕЦ  ДОБАВЛЕНИЕ/ИЗМЕНЕНИЕ КНИГИ В БД==============================
