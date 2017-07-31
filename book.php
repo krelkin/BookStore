@@ -5,7 +5,7 @@
 	echo '<div class="page-top" id="templatemo_about">
 	</div> <!-- /.page-header -->';
 	
-	$book = $DB->select(get_query_text(2, ["book_id" => 2]))[0];
+	$book = $DB->select(get_query_text(2, ["book_id" => $_GET["book_id"]]))[0];
 	$genres_arr = getList($DB, ["field" => "genre",  "book_id" => $_GET["book_id"], "get_array" => true]);
 	$authors_arr= getList($DB, ["field" => "author", "book_id" => $_GET["book_id"], "get_array" => true]);
 		
